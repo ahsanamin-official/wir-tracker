@@ -1,0 +1,1 @@
+Reserved for business-logic services (e.g. cumulative aggregation) if moved out of app.py.

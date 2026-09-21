@@ -1,0 +1,1 @@
+Reserved for future ORM models. Current version uses flat JSON files in backend/data/ for simplicity (see app.py).

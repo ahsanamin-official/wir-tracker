@@ -1,0 +1,22 @@
+# secrets — NEVER commit
+.env
+.env.*
+!.env.example
+serviceAccount*.json
+*-firebase-adminsdk-*.json
+*.pem
+.firebase/
+firebase-debug.log*
+
+# node / build output
+node_modules/
+dist/
+release/
+
+# python backend runtime data
+backend/venv/
+backend/data/
+backend/output/
+__pycache__/
+*.pyc
+.DS_Store

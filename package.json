@@ -1,0 +1,26 @@
+{
+  "name": "wir-tracker",
+  "version": "2.0.0",
+  "description": "WIR Tracker — multi-user Weekly Inspection Report app (Firebase Spark backend, web + Electron)",
+  "main": "electron/main.js",
+  "scripts": {
+    "config": "node scripts/gen-config.js",
+    "web": "node scripts/gen-config.js && npx --yes serve frontend -l 8080",
+    "start": "electron .",
+    "dist": "electron-builder",
+    "deploy:rules": "firebase deploy --only firestore:rules"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.wir.tracker",
+    "productName": "WIR Tracker",
+    "files": ["electron/**", "frontend/**", "package.json"],
+    "directories": { "output": "release" },
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg" },
+    "linux": { "target": "AppImage" }
+  }
+}

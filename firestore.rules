@@ -1,0 +1,102 @@
+rules_version = '2';
+
+// WIR Tracker — Firestore Security Rules
+// Roles: ADMIN, SUPERVISOR, INSPECTOR, VIEWER (stored in users/{uid}.role)
+// Every request re-checks the caller's users/{uid} document, so a disabled or
+// re-assigned user loses access immediately. Frontend checks are cosmetic only.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- helpers ---------- */
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function activeUser() { return signedIn() && me().active == true; }
+    function role() { return me().role; }
+    function isAdmin() { return activeUser() && role() == 'ADMIN'; }
+    function hasSite(siteId) { return activeUser() && (role() == 'ADMIN' || siteId in me().siteIds); }
+    function isInspector(siteId) { return hasSite(siteId) && role() == 'INSPECTOR'; }
+    function isSupervisor(siteId) { return hasSite(siteId) && role() == 'SUPERVISOR'; }
+    function reportPath(siteId, reportId) {
+      return /databases/$(database)/documents/sites/$(siteId)/reports/$(reportId);
+    }
+    // Child records (daily/materials/photos) may only change while the parent report is editable.
+    function canWriteChild(siteId, reportId) {
+      return isAdmin() ||
+        (isInspector(siteId) && get(reportPath(siteId, reportId)).data.status in ['Draft', 'Returned']);
+    }
+
+    /* ---------- users ---------- */
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.role in ['ADMIN', 'SUPERVISOR', 'INSPECTOR', 'VIEWER']
+        && request.resource.data.siteIds is list;
+      allow delete: if isAdmin();
+    }
+
+    /* ---------- sites ---------- */
+    match /sites/{siteId} {
+      allow read: if hasSite(siteId);
+      allow write: if isAdmin();
+
+      /* weekly reports */
+      match /reports/{reportId} {
+        allow read: if hasSite(siteId);
+
+        allow create: if isAdmin() ||
+          (isInspector(siteId)
+            && request.resource.data.status == 'Draft'
+            && request.resource.data.createdBy == request.auth.uid);
+
+        allow update: if isAdmin()
+          // inspector: only while Draft/Returned; may keep status or submit
+          || (isInspector(siteId)
+              && resource.data.status in ['Draft', 'Returned']
+              && (request.resource.data.status == resource.data.status
+                  || request.resource.data.status == 'Submitted'))
+          // supervisor: may only approve/return a Submitted report (review fields only)
+          || (isSupervisor(siteId)
+              && resource.data.status == 'Submitted'
+              && request.resource.data.status in ['Approved', 'Returned']
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['status', 'reviewNote', 'reviewedBy', 'reviewedByName',
+                             'reviewedAt', 'lastUpdated', 'updatedBy']));
+
+        allow delete: if isAdmin() ||
+          (isInspector(siteId) && resource.data.status == 'Draft'
+            && resource.data.createdBy == request.auth.uid);
+      }
+
+      /* daily progress + materials */
+      match /dailyProgress/{id} {
+        allow read: if hasSite(siteId);
+        allow create: if canWriteChild(siteId, request.resource.data.reportId);
+        allow update: if canWriteChild(siteId, resource.data.reportId)
+                      && request.resource.data.reportId == resource.data.reportId;
+        allow delete: if canWriteChild(siteId, resource.data.reportId);
+      }
+      match /materials/{id} {
+        allow read: if hasSite(siteId);
+        allow create: if canWriteChild(siteId, request.resource.data.reportId);
+        allow update: if canWriteChild(siteId, resource.data.reportId)
+                      && request.resource.data.reportId == resource.data.reportId;
+        allow delete: if canWriteChild(siteId, resource.data.reportId);
+      }
+
+      /* photos (stored as compressed data-URLs; hard cap keeps docs < 1 MiB) */
+      match /photos/{id} {
+        allow read: if hasSite(siteId);
+        allow create: if canWriteChild(siteId, request.resource.data.reportId)
+                      && request.resource.data.dataUrl.size() < 900000;
+        allow update: if canWriteChild(siteId, resource.data.reportId)
+                      && request.resource.data.reportId == resource.data.reportId
+                      && request.resource.data.dataUrl.size() < 900000;
+        allow delete: if canWriteChild(siteId, resource.data.reportId);
+      }
+    }
+
+    // everything else is closed
+    match /{document=**} { allow read, write: if false; }
+  }
+}
