@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WIR — Weekly Inspection Report System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-locked">
+<div id="authRoot"></div>
+<div id="appShell">
+  <aside id="sidebar">
+    <div id="brand">
+      <div class="logo">WI</div>
+      <div class="brand-text">
+        <div class="t1">WIR Tracker</div>
+        <div class="t2">Jhang · Gates &amp; Boundary Wall</div>
+      </div>
+    </div>
+    <div id="userBox"></div>
+    <nav id="navList"></nav>
+    <div id="apiStatus"><span class="dot"></span> Connecting…</div>
+  </aside>
+
+  <main id="main">
+    <button id="mobileToggle">☰</button>
+  </main>
+</div>
+
+<div id="toastHost"></div>
+
+<!-- Firebase (compat SDK, classic scripts: works in browsers AND Electron file://) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/defaults.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/api.js"></script>
+<script src="js/calculations.js"></script>
+<script src="js/validation.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/reports.js"></script>
+<script src="js/app.js"></script>
+<script src="js/auth.js"></script>
+</body>
+</html>
