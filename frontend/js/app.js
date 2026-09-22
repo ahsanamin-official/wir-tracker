@@ -321,16 +321,41 @@ App.pages['new-report'] = async function () {
 App.pages['daily-progress'] = async function () {
   const picker = await this.requireReportPicker('daily-progress', 'Weekly report');
   this.main().innerHTML = `
-    ${this.topbar('Weekly Calculation Sheet', 'Enter daily dimensions for each activity — bricks, cement, sand, aggregate, and steel are calculated live from the same formulas as the WIR workbook.', (Auth.canSubmit(storage.reportById(this.currentReportId)) ? `<button class="btn amber" id="btnSubmitRep">Submit for Review</button>` : ''))}
+    ${this.topbar('Daily Progress', 'Daily activity, materials, and quantities for this week.', (Auth.canSubmit(storage.reportById(this.currentReportId)) ? `<button class="btn amber" id="btnSubmitRep">Submit for Review</button>` : ''))}
     ${picker}
-    <div id="wirSheetHost"></div>
     <div id="dailyList"></div>
+    <div class="card mt-16">
+      <div class="flex-between">
+        <div>
+          <h3 style="margin:0">Detailed Calculation Sheet</h3>
+          <div class="text-sm text-muted">Wall-1/2/3, brickwork, and other quantities — INPUTS / CALCULATIONS / OUTPUTS.</div>
+        </div>
+        <button class="btn primary" id="btnOpenCalcSheet">Open Detailed Calculations</button>
+      </div>
+      <div id="wirSheetHost" class="mt-16"></div>
+    </div>
   `;
   this.bindReportPicker(() => this.pages['daily-progress'].call(this));
   const _bsu = document.getElementById('btnSubmitRep'); if (_bsu) _bsu.onclick = () => this.submitReport(this.currentReportId);
-  const report = storage.reportById(this.currentReportId);
-  if (report) await WirSheetUI.render(document.getElementById('wirSheetHost'), report);
   await this.renderDailyList();
+
+  const openBtn = document.getElementById('btnOpenCalcSheet');
+  const sheetHost = document.getElementById('wirSheetHost');
+  let sheetLoaded = false;
+  openBtn.onclick = async () => {
+    const report = storage.reportById(this.currentReportId);
+    if (!report) { UI.toast('Create a weekly report first.', 'error'); return; }
+    if (sheetLoaded) {
+      const visible = sheetHost.style.display !== 'none';
+      sheetHost.style.display = visible ? 'none' : '';
+      openBtn.textContent = visible ? 'Open Detailed Calculations' : 'Hide Detailed Calculations';
+      return;
+    }
+    openBtn.disabled = true; openBtn.textContent = 'Loading…';
+    await WirSheetUI.render(sheetHost, report);
+    sheetLoaded = true;
+    openBtn.disabled = false; openBtn.textContent = 'Hide Detailed Calculations';
+  };
 };
 
 App.renderDailyList = async function () {
