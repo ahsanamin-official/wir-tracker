@@ -17,6 +17,7 @@ from flask_cors import CORS
 
 from report_generator.docx_generator import build_docx
 from report_generator.pdf_generator import docx_to_pdf
+from report_generator.html_pdf_generator import build_pdf as build_pdf_native
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
@@ -213,15 +214,23 @@ def generate_report():
     safe_name = ''.join(c for c in report_number if c.isalnum() or c in ('-', '_')) or 'WIR-Report'
     docx_path = os.path.join(OUTPUT_DIR, f'{safe_name}.docx')
 
-    build_docx(payload, docx_path)
-
     if fmt == 'pdf':
         pdf_path = os.path.join(OUTPUT_DIR, f'{safe_name}.pdf')
+        # Preferred path: built-in HTML->PDF generator (wkhtmltopdf), no
+        # LibreOffice dependency, styled to match the reference template.
+        try:
+            build_pdf_native(payload, pdf_path)
+            return send_file(pdf_path, as_attachment=True, download_name=f'{safe_name}.pdf')
+        except Exception:
+            pass
+        # Fallback: build the .docx and convert via LibreOffice if available.
+        build_docx(payload, docx_path)
         ok = docx_to_pdf(docx_path, OUTPUT_DIR)
         if not ok or not os.path.exists(pdf_path):
-            return jsonify({'error': 'PDF conversion failed. Ensure LibreOffice (soffice) is installed and on PATH.'}), 500
+            return jsonify({'error': 'PDF generation failed (both the built-in HTML renderer and the LibreOffice fallback failed).'}), 500
         return send_file(pdf_path, as_attachment=True, download_name=f'{safe_name}.pdf')
 
+    build_docx(payload, docx_path)
     return send_file(docx_path, as_attachment=True, download_name=f'{safe_name}.docx')
 
 
