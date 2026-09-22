@@ -27,8 +27,20 @@ const Calc = {
     const n = parseFloat(numPanels) || 0;
     return +(n * PANEL_LENGTH_FT).toFixed(2);
   },
-  /** Suggest a computed quantity from entered dims, based on unit selected (quick-entry form only). */
-  autoQuantity(unit, { length, width, height, panels }) {
+  /** Suggest a computed quantity, using the same logic as the WIR workbook:
+   *  Plaster/Pointing = Length x Height (SFT, no width/thickness).
+   *  Brickwork = Length x Width x Height (CFT).
+   *  Footing/Columns/Plinth Beam (concrete work) = Nos x Length x Width x Height (CFT),
+   *  where "Panels" is used as the Nos multiplier.
+   *  Anything else falls back to a generic guess from the unit selected. */
+  autoQuantity(category, unit, { length, width, height, panels }) {
+    const cat = (category || '').toLowerCase();
+    if (cat === 'plaster' || cat === 'pointing') return this.sft(length, height);
+    if (cat === 'brickwork') return this.cft(length, width, height);
+    if (cat === 'footing' || cat === 'columns' || cat === 'plinth beam') {
+      const nos = parseFloat(panels) || 1;
+      return +(nos * this.cft(length, width, height)).toFixed(2);
+    }
     const u = (unit || '').toUpperCase();
     if (u === 'CFT') return this.cft(length, width, height);
     if (u === 'SFT') return this.sft(length, height);

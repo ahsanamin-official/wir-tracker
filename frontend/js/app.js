@@ -408,6 +408,11 @@ App.renderDailyList = async function () {
   });
 };
 
+App.calcBoxText = function (a, idx) {
+  const v = Calc.autoQuantity(a.activityCategory, a.unit, a);
+  return `Calculated suggestion: <strong>${v ?? 'enter manually'}</strong> ${a.unit || ''} <button class="btn sm ghost" style="margin-left:10px" data-apply-calc="${idx}">Use this value</button>`;
+};
+
 App.openDailyForm = async function (recordId) {
   const existing = recordId ? await storage.getDailyProgressByReport(this.currentReportId).then(list => list.find(r => r.id === recordId)) : null;
   const rec = existing ? JSON.parse(JSON.stringify(existing)) : {
@@ -461,10 +466,10 @@ App.openDailyForm = async function (recordId) {
         </div>
         <div class="field mt-10 mb-0"><label>Activity Description</label><input type="text" data-f="activityDescription" data-idx="${i}" value="${UI.escapeHtml(a.activityDescription || '')}" placeholder="e.g. (1:4) Plaster Above PL"></div>
         <div class="grid cols-4 mt-10">
-          <div class="field mb-0"><label>Length (ft)</label><input type="number" step="0.01" data-f="length" data-idx="${i}" value="${a.length ?? ''}"></div>
-          <div class="field mb-0"><label>Width (ft)</label><input type="number" step="0.01" data-f="width" data-idx="${i}" value="${a.width ?? ''}"></div>
-          <div class="field mb-0"><label>Height/Depth (ft)</label><input type="number" step="0.01" data-f="height" data-idx="${i}" value="${a.height ?? ''}"></div>
-          <div class="field mb-0"><label>Panels</label><input type="number" step="1" data-f="panels" data-idx="${i}" value="${a.panels ?? ''}"></div>
+          <div class="field mb-0"><label>Length (ft)</label><input class="no-spin" type="number" step="0.01" data-f="length" data-idx="${i}" value="${a.length ?? ''}"></div>
+          <div class="field mb-0"><label>Width (ft)</label><input class="no-spin" type="number" step="0.01" data-f="width" data-idx="${i}" value="${a.width ?? ''}"></div>
+          <div class="field mb-0"><label>Height/Depth (ft)</label><input class="no-spin" type="number" step="0.01" data-f="height" data-idx="${i}" value="${a.height ?? ''}"></div>
+          <div class="field mb-0"><label>Panels / Nos</label><input class="no-spin" type="number" step="1" data-f="panels" data-idx="${i}" value="${a.panels ?? ''}"></div>
         </div>
         <div class="grid cols-2 mt-10">
           <div class="field mb-0"><label>Unit</label>
@@ -474,9 +479,9 @@ App.openDailyForm = async function (recordId) {
               <option ${a.unit === 'Bags' ? 'selected' : ''}>Bags</option><option ${a.unit === 'Tons' ? 'selected' : ''}>Tons</option>
             </select>
           </div>
-          <div class="field mb-0"><label>Quantity (auto or manual)</label><input type="number" step="0.01" data-f="quantity" data-idx="${i}" value="${a.quantity ?? ''}"></div>
+          <div class="field mb-0"><label>Quantity (auto or manual)</label><input class="no-spin" type="number" step="0.01" data-f="quantity" data-idx="${i}" value="${a.quantity ?? ''}"></div>
         </div>
-        <div class="calc-box">Calculated suggestion: <strong>${Calc.autoQuantity(a.unit, a) ?? 'enter manually'}</strong> ${a.unit || ''} <button class="btn sm ghost" style="margin-left:10px" data-apply-calc="${i}">Use this value</button></div>
+        <div class="calc-box" data-calcbox="${i}">${this.calcBoxText(a, i)}</div>
         <div class="grid cols-2 mt-10">
           <div class="field mb-0"><label>Labour</label><input type="text" data-f="labour" data-idx="${i}" value="${UI.escapeHtml(a.labour || '')}"></div>
           <div class="field mb-0"><label>Equipment</label><input type="text" data-f="equipment" data-idx="${i}" value="${UI.escapeHtml(a.equipment || '')}"></div>
@@ -488,18 +493,27 @@ App.openDailyForm = async function (recordId) {
     host.querySelectorAll('[data-f]').forEach(inp => inp.addEventListener('input', (e) => {
       const idx = +e.target.getAttribute('data-idx'), field = e.target.getAttribute('data-f');
       rec.activities[idx][field] = e.target.value;
-      if (['length', 'width', 'height', 'panels', 'unit'].includes(field)) renderActivities();
+      if (['length', 'width', 'height', 'panels', 'unit', 'structuralElement', 'activityCategory'].includes(field)) {
+        const box = host.querySelector(`[data-calcbox="${idx}"]`);
+        if (box) box.innerHTML = this.calcBoxText(rec.activities[idx], idx);
+      }
     }));
-    host.querySelectorAll('[data-apply-calc]').forEach(btn => btn.addEventListener('click', (e) => {
-      const idx = +e.target.getAttribute('data-apply-calc');
-      const a = rec.activities[idx];
-      const v = Calc.autoQuantity(a.unit, a);
-      if (v !== null) { a.quantity = v; renderActivities(); }
-    }));
-    host.querySelectorAll('.remove-activity').forEach(btn => btn.addEventListener('click', (e) => {
-      rec.activities.splice(+e.target.getAttribute('data-idx'), 1);
-      renderActivities();
-    }));
+    host.onclick = (e) => {
+      const applyBtn = e.target.closest('[data-apply-calc]');
+      if (applyBtn) {
+        const idx = +applyBtn.getAttribute('data-apply-calc');
+        const a = rec.activities[idx];
+        const v = Calc.autoQuantity(a.activityCategory, a.unit, a);
+        if (v !== null) {
+          a.quantity = v;
+          const qtyInput = host.querySelector(`input[data-f="quantity"][data-idx="${idx}"]`);
+          if (qtyInput) qtyInput.value = v;
+        }
+        return;
+      }
+      const rmBtn = e.target.closest('.remove-activity');
+      if (rmBtn) { rec.activities.splice(+rmBtn.getAttribute('data-idx'), 1); renderActivities(); }
+    };
   };
   renderActivities();
 
