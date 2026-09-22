@@ -321,13 +321,15 @@ App.pages['new-report'] = async function () {
 App.pages['daily-progress'] = async function () {
   const picker = await this.requireReportPicker('daily-progress', 'Weekly report');
   this.main().innerHTML = `
-    ${this.topbar('Daily Progress Entry', 'Add day-by-day site records and structural activities for the selected report.', (Auth.canEditReport(storage.reportById(this.currentReportId)) ? `<button class="btn primary" id="btnAddDay">+ Add Daily Record</button>` : '') + (Auth.canSubmit(storage.reportById(this.currentReportId)) ? `<button class="btn amber" id="btnSubmitRep">Submit for Review</button>` : ''))}
+    ${this.topbar('Weekly Calculation Sheet', 'Enter daily dimensions for each activity — bricks, cement, sand, aggregate, and steel are calculated live from the same formulas as the WIR workbook.', (Auth.canSubmit(storage.reportById(this.currentReportId)) ? `<button class="btn amber" id="btnSubmitRep">Submit for Review</button>` : ''))}
     ${picker}
+    <div id="wirSheetHost"></div>
     <div id="dailyList"></div>
   `;
   this.bindReportPicker(() => this.pages['daily-progress'].call(this));
-  const _ba = document.getElementById('btnAddDay'); if (_ba) _ba.onclick = () => this.openDailyForm(null);
   const _bsu = document.getElementById('btnSubmitRep'); if (_bsu) _bsu.onclick = () => this.submitReport(this.currentReportId);
+  const report = storage.reportById(this.currentReportId);
+  if (report) await WirSheetUI.render(document.getElementById('wirSheetHost'), report);
   await this.renderDailyList();
 };
 
@@ -335,20 +337,15 @@ App.renderDailyList = async function () {
   const host = document.getElementById('dailyList');
   if (!this.currentReportId) { host.innerHTML = `<div class="card"><div class="empty-state">Create a weekly report first.</div></div>`; return; }
   const records = await storage.getDailyProgressByReport(this.currentReportId);
-  if (records.length === 0) { host.innerHTML = `<div class="card"><div class="empty-state"><div class="ic">📅</div>No daily records yet for this report.</div></div>`; return; }
+  if (records.length === 0) { host.innerHTML = `<div class="card"><div class="empty-state"><div class="ic">📅</div>Save the calculation sheet above to generate daily records.</div></div>`; return; }
 
-  const editable = Auth.canEditReport(storage.reportById(this.currentReportId));
-  host.innerHTML = records.map(rec => `
+  host.innerHTML = `<h3 class="mt-16" style="font-size:.85rem">Daily Records (generated from the sheet)</h3>` + records.map(rec => `
     <div class="card">
       <div class="flex-between">
         <div>
           <h3>${UI.formatDate(rec.date)} <span class="text-muted text-sm">· ${UI.escapeHtml(rec.dailyReportId)}</span></h3>
           <span class="badge ${rec.siteStatus === 'Closed' ? 'red' : rec.siteStatus === 'Partially Closed' ? 'amber' : 'green'}">${rec.siteStatus}</span>
           ${rec.closureReason ? `<span class="text-sm text-muted"> — ${UI.escapeHtml(rec.closureReason)}</span>` : ''}
-        </div>
-        <div class="flex-gap">
-          ${editable ? `<button class="btn sm ghost" data-edit="${rec.id}">Edit</button>
-          <button class="btn sm danger" data-del="${rec.id}">Delete</button>` : ''}
         </div>
       </div>
       <div class="grid cols-4 mt-10">
@@ -370,7 +367,6 @@ App.renderDailyList = async function () {
     </div>
   `).join('');
 
-  host.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => this.openDailyForm(b.getAttribute('data-edit')));
   host.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
     const ok = await UI.confirm('Delete this daily record and its logged activities?', { danger: true, okText: 'Delete' });
     if (!ok) return;
@@ -378,124 +374,6 @@ App.renderDailyList = async function () {
     UI.toast('Daily record deleted.', 'success');
     this.renderDailyList();
   });
-};
-
-App.openDailyForm = async function (recordId) {
-  const existing = recordId ? await storage.getDailyProgressByReport(this.currentReportId).then(list => list.find(r => r.id === recordId)) : null;
-  const rec = existing ? JSON.parse(JSON.stringify(existing)) : {
-    reportId: this.currentReportId, date: '', dailyReportId: '', siteStatus: 'Open', closureReason: '',
-    bricksConsumed: '', cementBags: '', fineSandVol: '', coarseAggVol: '', steelTons: '', remarks: '', activities: []
-  };
-
-  const backdrop = UI.openModal(`
-    <h3>${existing ? 'Edit' : 'Add'} Daily Progress Record</h3>
-    <div class="grid cols-2">
-      <div class="field"><label>Date *</label><input id="d_date" type="date" value="${rec.date || ''}"></div>
-      <div class="field"><label>Daily Report ID *</label><input id="d_dailyReportId" type="text" placeholder="e.g. DIR-JH-724" value="${UI.escapeHtml(rec.dailyReportId || '')}"></div>
-      <div class="field"><label>Site Status *</label>
-        <select id="d_siteStatus"><option ${rec.siteStatus === 'Open' ? 'selected' : ''}>Open</option><option ${rec.siteStatus === 'Partially Closed' ? 'selected' : ''}>Partially Closed</option><option ${rec.siteStatus === 'Closed' ? 'selected' : ''}>Closed</option></select>
-      </div>
-      <div class="field"><label>Closure Reason (if applicable)</label><input id="d_closureReason" type="text" value="${UI.escapeHtml(rec.closureReason || '')}" placeholder="e.g. Rain / Friday"></div>
-    </div>
-    <div class="section-divider"></div>
-    <h3 style="font-size:.85rem">Material Consumption (for Cumulative History, Sec. 7)</h3>
-    <div class="grid cols-2">
-      <div class="field"><label>Bricks Consumed (Nos.)</label><input id="d_bricksConsumed" type="number" min="0" value="${rec.bricksConsumed}"></div>
-      <div class="field"><label>Cement Consumed (Bags)</label><input id="d_cementBags" type="number" min="0" value="${rec.cementBags}"></div>
-      <div class="field"><label>Fine Sand Volume (ft³)</label><input id="d_fineSandVol" type="number" min="0" step="0.01" value="${rec.fineSandVol}"></div>
-      <div class="field"><label>Coarse Aggregate (ft³)</label><input id="d_coarseAggVol" type="number" min="0" step="0.01" value="${rec.coarseAggVol}"></div>
-      <div class="field"><label>Reinforcing Steel (Tons)</label><input id="d_steelTons" type="number" min="0" step="0.01" value="${rec.steelTons}"></div>
-    </div>
-    <div class="field"><label>Day Remarks</label><textarea id="d_remarks">${UI.escapeHtml(rec.remarks || '')}</textarea></div>
-
-    <div class="section-divider"></div>
-    <div class="flex-between"><h3 style="font-size:.85rem">Structural Activities</h3><button class="btn sm amber" id="btnAddActivity">+ Add Activity</button></div>
-    <div id="activityList"></div>
-
-    <div class="flex-end flex-gap mt-16">
-      <button class="btn ghost" data-act="cancel">Cancel</button>
-      <button class="btn primary" id="btnSaveDaily">Save Daily Record</button>
-    </div>
-  `);
-
-  const renderActivities = () => {
-    const host = backdrop.querySelector('#activityList');
-    host.innerHTML = rec.activities.map((a, i) => `
-      <div class="activity-card">
-        <button class="btn sm danger remove-activity" data-idx="${i}">✕</button>
-        <div class="grid cols-2">
-          <div class="field mb-0"><label>Structural Element</label>
-            <select data-f="structuralElement" data-idx="${i}">${STRUCTURAL_ELEMENTS.map(s => `<option ${a.structuralElement === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
-          </div>
-          <div class="field mb-0"><label>Activity Category</label>
-            <select data-f="activityCategory" data-idx="${i}">${ACTIVITY_CATEGORIES.map(c => `<option ${a.activityCategory === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
-          </div>
-        </div>
-        <div class="field mt-10 mb-0"><label>Activity Description</label><input type="text" data-f="activityDescription" data-idx="${i}" value="${UI.escapeHtml(a.activityDescription || '')}" placeholder="e.g. (1:4) Plaster Above PL"></div>
-        <div class="grid cols-4 mt-10">
-          <div class="field mb-0"><label>Length (ft)</label><input type="number" step="0.01" data-f="length" data-idx="${i}" value="${a.length ?? ''}"></div>
-          <div class="field mb-0"><label>Width (ft)</label><input type="number" step="0.01" data-f="width" data-idx="${i}" value="${a.width ?? ''}"></div>
-          <div class="field mb-0"><label>Height/Depth (ft)</label><input type="number" step="0.01" data-f="height" data-idx="${i}" value="${a.height ?? ''}"></div>
-          <div class="field mb-0"><label>Panels</label><input type="number" step="1" data-f="panels" data-idx="${i}" value="${a.panels ?? ''}"></div>
-        </div>
-        <div class="grid cols-2 mt-10">
-          <div class="field mb-0"><label>Unit</label>
-            <select data-f="unit" data-idx="${i}">
-              <option ${a.unit === 'CFT' ? 'selected' : ''}>CFT</option><option ${a.unit === 'SFT' ? 'selected' : ''}>SFT</option>
-              <option ${a.unit === 'FT' ? 'selected' : ''}>FT</option><option ${a.unit === 'Nos' ? 'selected' : ''}>Nos</option>
-              <option ${a.unit === 'Bags' ? 'selected' : ''}>Bags</option><option ${a.unit === 'Tons' ? 'selected' : ''}>Tons</option>
-            </select>
-          </div>
-          <div class="field mb-0"><label>Quantity (auto or manual)</label><input type="number" step="0.01" data-f="quantity" data-idx="${i}" value="${a.quantity ?? ''}"></div>
-        </div>
-        <div class="calc-box">Calculated suggestion: <strong>${Calc.autoQuantity(a.unit, a) ?? 'enter manually'}</strong> ${a.unit || ''} <button class="btn sm ghost" style="margin-left:10px" data-apply-calc="${i}">Use this value</button></div>
-        <div class="grid cols-2 mt-10">
-          <div class="field mb-0"><label>Labour</label><input type="text" data-f="labour" data-idx="${i}" value="${UI.escapeHtml(a.labour || '')}"></div>
-          <div class="field mb-0"><label>Equipment</label><input type="text" data-f="equipment" data-idx="${i}" value="${UI.escapeHtml(a.equipment || '')}"></div>
-        </div>
-        <div class="field mt-10 mb-0"><label>Remarks</label><input type="text" data-f="remarks" data-idx="${i}" value="${UI.escapeHtml(a.remarks || '')}"></div>
-      </div>
-    `).join('') || `<p class="text-sm text-muted">No activities added yet.</p>`;
-
-    host.querySelectorAll('[data-f]').forEach(inp => inp.addEventListener('input', (e) => {
-      const idx = +e.target.getAttribute('data-idx'), field = e.target.getAttribute('data-f');
-      rec.activities[idx][field] = e.target.value;
-      if (['length', 'width', 'height', 'panels', 'unit'].includes(field)) renderActivities();
-    }));
-    host.querySelectorAll('[data-apply-calc]').forEach(btn => btn.addEventListener('click', (e) => {
-      const idx = +e.target.getAttribute('data-apply-calc');
-      const a = rec.activities[idx];
-      const v = Calc.autoQuantity(a.unit, a);
-      if (v !== null) { a.quantity = v; renderActivities(); }
-    }));
-    host.querySelectorAll('.remove-activity').forEach(btn => btn.addEventListener('click', (e) => {
-      rec.activities.splice(+e.target.getAttribute('data-idx'), 1);
-      renderActivities();
-    }));
-  };
-  renderActivities();
-
-  backdrop.querySelector('#btnAddActivity').onclick = () => {
-    rec.activities.push({ structuralElement: 'Wall-1', activityCategory: 'Other', activityDescription: '', length: '', width: '', height: '', panels: '', unit: 'CFT', quantity: '', labour: '', equipment: '', remarks: '' });
-    renderActivities();
-  };
-
-  backdrop.addEventListener('click', (e) => { if (e.target.getAttribute('data-act') === 'cancel') UI.closeModal(backdrop); });
-
-  backdrop.querySelector('#btnSaveDaily').onclick = async () => {
-    ['date', 'dailyReportId', 'siteStatus', 'closureReason', 'bricksConsumed', 'cementBags', 'fineSandVol', 'coarseAggVol', 'steelTons', 'remarks'].forEach(f => {
-      rec[f] = backdrop.querySelector('#d_' + f).value.trim();
-    });
-    const errors = Validate.validateDailyRecord(rec);
-    for (const a of rec.activities) Object.assign(errors, {});
-    if (Validate.hasErrors(errors)) { UI.toast(Object.values(errors)[0], 'error'); return; }
-    if (existing) rec.id = existing.id;
-    try { await storage.saveDailyProgress(rec); }
-    catch (e) { UI.toast('Save failed: ' + (e.code === 'permission-denied' ? 'permission denied (report locked?).' : e.message), 'error', 6000); return; }
-    UI.closeModal(backdrop);
-    UI.toast('Daily record saved. ' + storage.saveNotice(), 'success');
-    this.renderDailyList();
-  };
 };
 
 /* =========================================================

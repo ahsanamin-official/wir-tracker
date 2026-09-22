@@ -378,3 +378,19 @@ body.auth-locked #appShell{display:none;}
 #userBox .ub-name{font-weight:600;color:var(--navy);}
 #userBox select{width:100%;margin-top:8px;padding:6px;border-radius:8px;border:1px solid var(--line);}
 .badge.blue{background:rgba(74,111,165,0.15);color:var(--steel);}
+
+/* ---------- Weekly Calculation Sheet (live formula engine) ---------- */
+.wir-blocks{display:flex;flex-direction:column;gap:18px;}
+.wir-block{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;overflow-x:auto;}
+.wir-block-title{font-weight:600;color:var(--navy);margin-bottom:8px;font-size:.88rem;}
+.wir-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.wir-table th,.wir-table td{border:1px solid var(--line);padding:5px 7px;text-align:center;white-space:nowrap;}
+.wir-table thead th{background:rgba(74,111,165,0.08);font-weight:600;}
+.wir-total-row td{font-weight:700;background:rgba(74,111,165,0.06);}
+.wir-cell{width:72px;border:1px solid transparent;border-radius:4px;padding:3px 5px;font-size:.82rem;text-align:center;background:transparent;font-family:var(--font-mono,inherit);}
+.wir-cell.input{background:#fffde0;border-color:#e8e0a0;}
+.wir-cell.input:focus{outline:2px solid var(--steel);background:#fffef0;}
+.wir-cell.calc{background:#eef2f7;color:#33475b;cursor:default;}
+.wir-readonly{color:#33475b;font-weight:600;}
+.wir-grid-sm{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 16px;}
+#wirCalcSection,#wirOutputsSection{margin-top:16px;}

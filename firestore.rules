@@ -84,6 +84,15 @@ service cloud.firestore {
         allow delete: if canWriteChild(siteId, resource.data.reportId);
       }
 
+      /* weekly calculation sheet (live-formula overrides for the WIR-style sheet) */
+      match /calcSheets/{id} {
+        allow read: if hasSite(siteId);
+        allow create: if canWriteChild(siteId, request.resource.data.reportId);
+        allow update: if canWriteChild(siteId, resource.data.reportId)
+                      && request.resource.data.reportId == resource.data.reportId;
+        allow delete: if canWriteChild(siteId, resource.data.reportId);
+      }
+
       /* photos (stored as compressed data-URLs; hard cap keeps docs < 1 MiB) */
       match /photos/{id} {
         allow read: if hasSite(siteId);

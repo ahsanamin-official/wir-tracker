@@ -22,7 +22,7 @@ class CloudStorage {
     this.siteId = null;
     this.siteRef = null;
     this.master = null;
-    this.cache = { reports: [], dailyProgress: [], materials: [] };
+    this.cache = { reports: [], dailyProgress: [], materials: [], calcSheets: [] };
     this.photoCache = {};
     this.unsubs = [];
     this.pending = {};
@@ -64,7 +64,7 @@ class CloudStorage {
     this.siteRef = this.db.doc('sites/' + siteId);
     this.master = null;
     this.siteName = '';
-    this.cache = { reports: [], dailyProgress: [], materials: [] };
+    this.cache = { reports: [], dailyProgress: [], materials: [], calcSheets: [] };
     this.photoCache = {};
 
     const waits = [];
@@ -93,7 +93,7 @@ class CloudStorage {
       this.master = d.master || null;
       this.siteName = d.name || siteId;
     });
-    ['reports', 'dailyProgress', 'materials'].forEach(key => {
+    ['reports', 'dailyProgress', 'materials', 'calcSheets'].forEach(key => {
       listen(key, this.siteRef.collection(key), snap => {
         this.cache[key] = snap.docs.map(d => Object.assign({}, d.data(), { id: d.id }));
       });
@@ -185,6 +185,7 @@ class CloudStorage {
     const kids = [];
     this.cache.dailyProgress.filter(d => d.reportId === id).forEach(d => kids.push(this._col('dailyProgress').doc(d.id)));
     this.cache.materials.filter(m => m.reportId === id).forEach(m => kids.push(this._col('materials').doc(m.id)));
+    this.cache.calcSheets.filter(c => c.reportId === id).forEach(c => kids.push(this._col('calcSheets').doc(c.id)));
     const ps = await this._col('photos').where('reportId', '==', id).get();
     ps.docs.forEach(d => kids.push(d.ref));
     for (const ref of kids) await this._commit(ref.delete());
@@ -206,6 +207,13 @@ class CloudStorage {
   async saveMaterials(record) {
     if (!record.id) record.id = 'mat_' + record.reportId;
     return this._save('materials', record, 'mat');
+  }
+
+  /* ---------- Weekly calculation sheet (one per report; live-formula overrides only) ---------- */
+  async getCalcSheetByReport(reportId) { return this.cache.calcSheets.find(c => c.reportId === reportId) || null; }
+  async saveCalcSheet(record) {
+    if (!record.id) record.id = 'calc_' + record.reportId;
+    return this._save('calcSheets', record, 'calc');
   }
 
   /* ---------- Photos (compressed data-URL docs) ---------- */
@@ -242,7 +250,7 @@ class CloudStorage {
     return {
       masterData: [Object.assign({ id: 'singleton' }, this.master || DEFAULT_MASTER)],
       reports: this.cache.reports, dailyProgress: this.cache.dailyProgress,
-      materials: this.cache.materials, photos,
+      materials: this.cache.materials, calcSheets: this.cache.calcSheets, photos,
       _exportedAt: this._now(), _version: 1
     };
   }
@@ -252,7 +260,7 @@ class CloudStorage {
       const m = Object.assign({}, data.masterData[0]); delete m.id;
       await this.saveMasterData(m);
     }
-    const keys = ['reports', 'dailyProgress', 'materials', 'photos'];
+    const keys = ['reports', 'dailyProgress', 'materials', 'calcSheets', 'photos'];
     let count = 0;
     for (const key of keys) {
       const list = Array.isArray(data[key]) ? data[key] : [];
