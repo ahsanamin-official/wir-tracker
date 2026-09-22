@@ -28,9 +28,13 @@ const App = {
   currentReportId: null,
 
   async init() {
+    const closeSidebar = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarBackdrop').classList.remove('show'); };
     document.getElementById('mobileToggle').addEventListener('click', () => {
       document.getElementById('sidebar').classList.toggle('open');
+      document.getElementById('sidebarBackdrop').classList.toggle('show');
     });
+    document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
+    this._closeSidebar = closeSidebar;
     window.addEventListener('hashchange', () => { if (Auth.ready) this.routeFromHash(); });
     storage.onStatus = () => this.renderStatus();
     storage.onRemoteChange = (k) => this.onRemoteChange(k);
@@ -75,6 +79,7 @@ const App = {
     if (param) this.currentReportId = param;
     if (pushHash) location.hash = param ? `${page}/${param}` : page;
     document.getElementById('sidebar').classList.remove('open');
+    const bd = document.getElementById('sidebarBackdrop'); if (bd) bd.classList.remove('show');
     this.renderSidebar();
     const renderer = this.pages[page] || this.pages.home;
     renderer.call(this);

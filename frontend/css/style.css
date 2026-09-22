@@ -324,15 +324,22 @@ tbody tr:last-child td{border-bottom:none;}
     transition:transform .2s ease; z-index:100; width:80vw; max-width:280px;
   }
   #sidebar.open{transform:translateX(0);}
+  /* Lives OUTSIDE #main (which gets fully replaced on every page render) so it never disappears. */
   #mobileToggle{
     display:flex; align-items:center; justify-content:center;
-    width:40px;height:40px;border-radius:10px;
+    width:44px;height:44px;border-radius:12px;
+    position:fixed; top:14px; left:14px; z-index:110;
     background:var(--glass-bg-strong); border:1px solid var(--glass-border);
-    cursor:pointer; font-size:1.1rem;
+    box-shadow:var(--glass-shadow); cursor:pointer; font-size:1.2rem; color:var(--navy);
   }
-  #main{padding:18px 14px 60px 14px;}
+  #main{padding:70px 14px 60px 14px;}
   #topbar h1{font-size:1.1rem;}
   .grid.cols-4, .grid.cols-3{grid-template-columns:1fr 1fr;}
+}
+/* Backdrop behind the open mobile sidebar, tap to close */
+#sidebarBackdrop{display:none;}
+@media(max-width:900px){
+  #sidebarBackdrop.show{display:block; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:90;}
 }
 @media(max-width:480px){
   .grid.cols-4, .grid.cols-3, .grid.cols-2{grid-template-columns:1fr;}

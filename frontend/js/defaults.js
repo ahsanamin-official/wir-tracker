@@ -12,7 +12,7 @@ const DEFAULT_MASTER = {
   mobilizationDate: '2026-05-01',
   residentEngineer: 'Engineer Ahmad Moaz',
   qualityInspector: 'Aqib Javed Bismil',
-  projectCoordinator: 'Engineer Muhammad Aazan Kashif',
+  projectCoordinator: 'Engineer Muhammad Ahsan Amin',
   governingStandards: 'Engineering Standards and Technical Specifications (1967), together with applicable C&W amendments.',
   baseline: {
     quantities: [
