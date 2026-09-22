@@ -1,0 +1,29 @@
+{
+  "$comment": "Edit this file (or send an override in the payload as payload.reportConfig) to change which sections appear, their order, or page setup. No code changes needed.",
+  "sections": [
+    "cover",
+    "toc",
+    "client_details",
+    "introduction",
+    "material_qa",
+    "baseline",
+    "weekly_progress",
+    "highlights",
+    "cumulative_history",
+    "structural_breakdown",
+    "exec_summary"
+  ],
+  "pageSetup": {
+    "size": "A4",
+    "margins": { "top": "18mm", "bottom": "16mm", "left": "16mm", "right": "16mm" },
+    "headerOnCover": false,
+    "showPageNumbers": true
+  },
+  "branding": {
+    "consultantName": "ENGINEERING AXIS",
+    "consultantTagline": "Delivering Excellence",
+    "accentColor": "#E8622C",
+    "darkColor": "#1A1A1A",
+    "clientLogoText": "PGSHF"
+  }
+}

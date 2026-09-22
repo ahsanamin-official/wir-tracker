@@ -1,0 +1,61 @@
+{
+  "$comment": "Data model for the WIR report. Lists every section that CAN exist and its fields. This file describes structure, not which sections appear in a given report — that's report_config.json.",
+  "sections": {
+    "cover": {
+      "title": "Cover Page",
+      "required": true,
+      "fields": ["reportTitle", "reportSubtitle", "client", "consultant", "location", "reportNumber", "weekLabel", "preparedBy", "coverPhotoUrl"]
+    },
+    "toc": {
+      "title": "Table of Contents",
+      "required": false,
+      "fields": []
+    },
+    "client_details": {
+      "title": "1. Client Details",
+      "required": true,
+      "fields": ["projectTitle", "client", "clientAddress", "consultant", "facility", "location",
+                 "reportWeek", "projectDuration", "residentEngineer", "qualityInspector", "projectCoordinator"]
+    },
+    "introduction": {
+      "title": "2. Introduction",
+      "required": true,
+      "fields": ["projectBackground", "objectiveScope", "scopeBullets"]
+    },
+    "material_qa": {
+      "title": "3. Material Quality Assurance & Field Verification",
+      "required": false,
+      "fields": ["materials", "terminologyBullets", "materialPhotos"]
+    },
+    "baseline": {
+      "title": "4. Pre-Consultancy Mobilization Baseline Record",
+      "required": false,
+      "fields": ["mobilizationDate", "baselineRows"]
+    },
+    "weekly_progress": {
+      "title": "5. Weekly Progress Work",
+      "required": true,
+      "fields": ["weather", "siteStatus", "weeklyWorkByWall"]
+    },
+    "highlights": {
+      "title": "6. Weekly Progress Work Highlights",
+      "required": false,
+      "fields": ["highlightBullets", "highlightPhotos"]
+    },
+    "cumulative_history": {
+      "title": "7. Cumulative Project History Work Flow",
+      "required": false,
+      "fields": ["dailyRows", "totals"]
+    },
+    "structural_breakdown": {
+      "title": "8. Weekly Progress Breakdown by Structural Levels",
+      "required": false,
+      "fields": ["breakdownRows"]
+    },
+    "exec_summary": {
+      "title": "9. Executive Summary & Engineering Conclusion",
+      "required": true,
+      "fields": ["summaryParagraphs"]
+    }
+  }
+}
